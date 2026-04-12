@@ -11,7 +11,7 @@ from config import (
 )
 
 
-def get_report_for_user(username: str, date_from: date | None, date_to: date | None) -> dict | None:
+def get_report_context(date_from: date | None, date_to: date | None) -> dict | None:
     client = clickhouse_connect.get_client(
         host=OLAP_CLICKHOUSE_HOST,
         port=OLAP_CLICKHOUSE_PORT,
@@ -22,7 +22,7 @@ def get_report_for_user(username: str, date_from: date | None, date_to: date | N
 
     metadata = client.query(
         """
-        SELECT available_from, available_to
+        SELECT available_from, available_to, updated_at
         FROM etl_metadata
         WHERE pipeline_name = 'reports_mart'
         ORDER BY updated_at DESC
@@ -32,7 +32,7 @@ def get_report_for_user(username: str, date_from: date | None, date_to: date | N
     if not metadata:
         return None
 
-    available_from, available_to = metadata[0]
+    available_from, available_to, updated_at = metadata[0]
     if available_from is None or available_to is None:
         return None
 
@@ -46,6 +46,29 @@ def get_report_for_user(username: str, date_from: date | None, date_to: date | N
             "available_to": available_to.isoformat(),
         }
 
+    return {
+        "available_from": available_from,
+        "available_to": available_to,
+        "requested_from": requested_from,
+        "requested_to": requested_to,
+        "cache_version": updated_at.strftime("%Y%m%d%H%M%S"),
+    }
+
+
+def get_report_for_user(
+    username: str,
+    requested_from: date,
+    requested_to: date,
+    available_from: date,
+    available_to: date,
+) -> dict:
+    client = clickhouse_connect.get_client(
+        host=OLAP_CLICKHOUSE_HOST,
+        port=OLAP_CLICKHOUSE_PORT,
+        username=OLAP_CLICKHOUSE_USER,
+        password=OLAP_CLICKHOUSE_PASSWORD,
+        database=OLAP_CLICKHOUSE_DATABASE,
+    )
     rows = client.query(
         """
         SELECT

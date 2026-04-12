@@ -39,13 +39,25 @@ docker cp practicum-architecture-project9-keycloak-1:/tmp/export/reports-realm-r
 docker compose up
 ```
 2. Откройте Airflow: http://localhost:8081
-3. Войдите: admin / admin.
+3. Войдите: `admin` / `admin`.
 4. Найдите DAG `reports_etl`.
-5. Нажмите toggle для включения DAG.
-6. Нажмите `Trigger DAG`.
-7. Откройте UI: http://localhost:3000
-8. Нажмите `Login with Keycloak`.
-9. Войдите под одним из пользователей из таблицы выше.
-10. Настройте OTP.
-11. Выберите период.
-12. Нажмите `Получить отчёт`.
+5. Нажмите `Trigger DAG`.
+6. Откройте UI: http://localhost:3000
+7. Нажмите `Login with Keycloak`.
+8. Войдите под одним из пользователей из таблицы выше.
+9. Настройте OTP.
+10. Выберите период.
+11. Нажмите `Получить отчёт`.
+
+
+## Задание 3. Снижение нагрузки на базу данных
+
+Инструкция:
+1. Запустите:
+```bash
+docker compose up
+```
+2. Откройте Airflow: http://localhost:8081
+3. Нажмите `Trigger DAG`.
+4. Откройте UI: http://localhost:3000
+5. Нажмите `Получить отчёт`, должна появиться ссылка `Открыть JSON через CDN`.

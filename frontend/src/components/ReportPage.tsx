@@ -30,6 +30,16 @@ type ReportResponse = {
   error?: string;
 };
 
+type ReportLinkResponse = {
+  report_url: string;
+  cached: boolean;
+  requested_from: string;
+  requested_to: string;
+  available_from: string;
+  available_to: string;
+  cache_version: string;
+};
+
 const authBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const ReportPage: React.FC = () => {
@@ -40,6 +50,7 @@ const ReportPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [reportUrl, setReportUrl] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState('2026-04-10');
   const [dateTo, setDateTo] = useState('2026-04-12');
 
@@ -88,6 +99,7 @@ const ReportPage: React.FC = () => {
       setError(null);
       setMessage(null);
       setReport(null);
+      setReportUrl(null);
 
       const params = new URLSearchParams();
       if (dateFrom) {
@@ -119,9 +131,18 @@ const ReportPage: React.FC = () => {
         throw new Error(`Report request failed with ${response.status}`);
       }
 
-      const payload: ReportResponse = await response.json();
-      setReport(payload);
-      setMessage('Отчёт получен из OLAP-витрины.');
+      const payload: ReportLinkResponse = await response.json();
+      const reportFileResponse = await fetch(payload.report_url);
+      if (!reportFileResponse.ok) {
+        throw new Error(`Не удалось получить файл отчёта через CDN: ${reportFileResponse.status}`);
+      }
+
+      const reportPayload: ReportResponse = await reportFileResponse.json();
+      setReport(reportPayload);
+      setReportUrl(payload.report_url);
+      setMessage(
+        payload.cached ? 'Отчёт отдан из CDN.' : 'Отчёт сформирован, сохранён в S3 и отдан через CDN.'
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -261,6 +282,16 @@ const ReportPage: React.FC = () => {
             <p className="mt-1 text-sm text-slate-400">
               Период: {report.requested_from} - {report.requested_to}
             </p>
+            {reportUrl && (
+              <a
+                href={reportUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex rounded-xl border border-cyan-400/40 px-4 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-400/10"
+              >
+                Открыть JSON через CDN
+              </a>
+            )}
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
                 <p className="text-sm text-slate-400">События телеметрии</p>

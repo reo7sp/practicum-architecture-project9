@@ -7,6 +7,7 @@ from urllib.parse import urlencode
 from flask import Flask, jsonify, make_response, redirect, request
 
 from config import (
+    CDN_PUBLIC_URL,
     COOKIE_SAME_SITE,
     COOKIE_SECURE,
     FRONTEND_BASE_URL,
@@ -22,7 +23,8 @@ from config import (
     STATE_COOKIE_NAME,
 )
 from keycloak_client import revoke_refresh_token, token_request
-from olap_client import get_report_for_user
+from olap_client import get_report_context, get_report_for_user
+from report_storage import build_report_object_key, get_report_url_if_exists, upload_report
 from store import Profile, ProfileStore, Session, SessionStore
 from utils import decode_jwt_claims, pkce_challenge
 
@@ -294,15 +296,44 @@ def reports_download():
     date_from = datetime.strptime(date_from_value, "%Y-%m-%d").date() if date_from_value else None
     date_to = datetime.strptime(date_to_value, "%Y-%m-%d").date() if date_to_value else None
 
-    report = get_report_for_user(current_username, date_from, date_to)
-    if report is None:
+    report_context = get_report_context(date_from, date_to)
+    if report_context is None:
         return jsonify({"error": "report_mart_not_ready"}), 503
-    if report.get("error") == "period_not_available":
-        return jsonify(report), 409
-    if report.get("error") == "report_not_found":
-        return jsonify(report), 404
+    if report_context.get("error") == "period_not_available":
+        return jsonify(report_context), 409
 
-    response = jsonify(report)
+    object_key = build_report_object_key(
+        current_username,
+        report_context["requested_from"].isoformat(),
+        report_context["requested_to"].isoformat(),
+        report_context["cache_version"],
+    )
+    report_url = get_report_url_if_exists(object_key)
+    cached = report_url is not None
+    if report_url is None:
+        report = get_report_for_user(
+            current_username,
+            report_context["requested_from"],
+            report_context["requested_to"],
+            report_context["available_from"],
+            report_context["available_to"],
+        )
+        if report.get("error") == "report_not_found":
+            return jsonify(report), 404
+        report_url = upload_report(object_key, report)
+
+    response = jsonify(
+        {
+            "report_url": report_url,
+            "cached": cached,
+            "cdn_base_url": CDN_PUBLIC_URL,
+            "requested_from": report_context["requested_from"].isoformat(),
+            "requested_to": report_context["requested_to"].isoformat(),
+            "available_from": report_context["available_from"].isoformat(),
+            "available_to": report_context["available_to"].isoformat(),
+            "cache_version": report_context["cache_version"],
+        }
+    )
     if rotated_id:
         response.set_cookie(
             SESSION_COOKIE_NAME,
