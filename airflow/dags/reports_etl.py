@@ -90,6 +90,7 @@ def sync_report_mart() -> None:
                     ]
                 )
 
+            clickhouse.command("TRUNCATE TABLE report_mart_view")
             clickhouse.command("TRUNCATE TABLE report_mart_daily")
             clickhouse.command("TRUNCATE TABLE etl_metadata")
             if mart_rows:

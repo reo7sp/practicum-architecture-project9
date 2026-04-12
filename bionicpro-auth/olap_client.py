@@ -82,7 +82,7 @@ def get_report_for_user(
             sum(total_active_minutes) AS total_active_minutes,
             avg(avg_battery_level) AS avg_battery_level,
             max(last_event_at) AS last_event_at
-        FROM report_mart_daily
+        FROM report_mart_view
         WHERE username = %(username)s
           AND report_date BETWEEN %(date_from)s AND %(date_to)s
         GROUP BY username, email, full_name, country, segment

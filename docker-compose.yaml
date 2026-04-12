@@ -5,6 +5,7 @@ services:
       POSTGRES_DB: crm_db
       POSTGRES_USER: crm_user
       POSTGRES_PASSWORD: crm_password
+    command: ["postgres", "-c", "wal_level=logical", "-c", "max_replication_slots=5", "-c", "max_wal_senders=5", "-c", "max_worker_processes=10"]
     volumes:
       - crm_db_data:/var/lib/postgresql/data
       - ./db/crm_init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -146,6 +147,67 @@ services:
       openldap:
         condition: service_started
 
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.1
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+  debezium:
+    image: debezium/connect:2.3
+    depends_on:
+      - kafka
+      - crm_db
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: debezium-connect-configs
+      OFFSET_STORAGE_TOPIC: debezium-connect-offsets
+      STATUS_STORAGE_TOPIC: debezium-connect-status
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+      REST_ADVERTISED_HOST_NAME: debezium
+      PLUGIN_PATH: /kafka/connect
+    ports:
+      - "8083:8083"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  debezium-init:
+    image: curlimages/curl:latest
+    depends_on:
+      - debezium
+    volumes:
+      - ./debezium/register-connectors.sh:/scripts/register-connectors.sh:ro
+      - ./debezium/crm-connector.json:/debezium/crm-connector.json:ro
+    entrypoint: ["/scripts/register-connectors.sh"]
+
   bionicpro-auth:
     build:
       context: ./bionicpro-auth
@@ -236,5 +298,6 @@ volumes:
   keycloak_db_data:
   telemetry_db_data:
   olap_db_data:
+  kafka_data:
   airflow_data:
   minio_data:

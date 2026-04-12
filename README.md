@@ -61,3 +61,16 @@ docker compose up
 3. Нажмите `Trigger DAG`.
 4. Откройте UI: http://localhost:3000
 5. Нажмите `Получить отчёт`, должна появиться ссылка `Открыть JSON через CDN`.
+
+
+## Задание 4. Повышение оперативности и стабильности CRM
+
+Инструкция:
+1. Запустите:
+```bash
+docker compose up
+```
+3. Откройте Debezium: http://localhost:8083/connectors
+4. Должен существовать connector `crm-connector`.
+5. Откройте UI: http://localhost:3000
+6. Нажмите `Получить отчёт`.

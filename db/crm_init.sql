@@ -15,3 +15,13 @@ VALUES
     ('john.doe', 'john@example.com', 'John Doe', 'US', 'foreign'),
     ('jane.smith', 'jane@example.com', 'Jane Smith', 'DE', 'foreign')
 ON CONFLICT (username) DO NOTHING;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cdc_admin') THEN
+        CREATE USER cdc_admin WITH REPLICATION PASSWORD 'cdc_password';
+    END IF;
+END;
+$$;
+GRANT SELECT ON crm_clients TO cdc_admin;
+CREATE PUBLICATION IF NOT EXISTS crm_pub FOR TABLE crm_clients;
