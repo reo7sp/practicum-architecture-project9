@@ -22,6 +22,7 @@ from config import (
     STATE_COOKIE_NAME,
 )
 from keycloak_client import revoke_refresh_token, token_request
+from olap_client import get_report_for_user
 from store import Profile, ProfileStore, Session, SessionStore
 from utils import decode_jwt_claims, pkce_challenge
 
@@ -283,16 +284,25 @@ def reports_download():
     if record is None:
         return jsonify({"error": "unauthorized"}), 401
 
-    report = (
-        "user,identity_provider,generated_at\n"
-        f"{record.profile.email or record.profile.username},"
-        f"{record.profile.identity_provider or 'keycloak'},"
-        f"{datetime.now(timezone.utc).isoformat()}\n"
-    )
+    requested_username = request.args.get("username")
+    current_username = record.profile.username or record.profile.email
+    if requested_username and requested_username != current_username:
+        return jsonify({"error": "forbidden"}), 403
 
-    response = make_response(report, 200)
-    response.headers["Content-Type"] = "text/csv"
-    response.headers["Content-Disposition"] = 'attachment; filename="usage-report.csv"'
+    date_from_value = request.args.get("date_from")
+    date_to_value = request.args.get("date_to")
+    date_from = datetime.strptime(date_from_value, "%Y-%m-%d").date() if date_from_value else None
+    date_to = datetime.strptime(date_to_value, "%Y-%m-%d").date() if date_to_value else None
+
+    report = get_report_for_user(current_username, date_from, date_to)
+    if report is None:
+        return jsonify({"error": "report_mart_not_ready"}), 503
+    if report.get("error") == "period_not_available":
+        return jsonify(report), 409
+    if report.get("error") == "report_not_found":
+        return jsonify(report), 404
+
+    response = jsonify(report)
     if rotated_id:
         response.set_cookie(
             SESSION_COOKIE_NAME,

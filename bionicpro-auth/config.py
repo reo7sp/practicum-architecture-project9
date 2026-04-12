@@ -18,3 +18,8 @@ COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 COOKIE_SAME_SITE = os.getenv("COOKIE_SAME_SITE", "Lax")
 SESSION_ENCRYPTION_SECRET = os.getenv("SESSION_ENCRYPTION_SECRET", "change-me-session-encryption-secret")
 PROFILE_STORE_PATH = os.getenv("PROFILE_STORE_PATH", "./data/profiles.db")
+OLAP_CLICKHOUSE_HOST = os.getenv("OLAP_CLICKHOUSE_HOST", "olap_db")
+OLAP_CLICKHOUSE_PORT = int(os.getenv("OLAP_CLICKHOUSE_PORT", "8123"))
+OLAP_CLICKHOUSE_USER = os.getenv("OLAP_CLICKHOUSE_USER", "default")
+OLAP_CLICKHOUSE_PASSWORD = os.getenv("OLAP_CLICKHOUSE_PASSWORD", "clickhouse_password")
+OLAP_CLICKHOUSE_DATABASE = os.getenv("OLAP_CLICKHOUSE_DATABASE", "olap_db")

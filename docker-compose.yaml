@@ -1,6 +1,56 @@
-version: '3.8'
-
 services:
+  crm_db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: crm_db
+      POSTGRES_USER: crm_user
+      POSTGRES_PASSWORD: crm_password
+    volumes:
+      - crm_db_data:/var/lib/postgresql/data
+      - ./db/crm_init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crm_user -d crm_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5434:5432"
+
+  telemetry_db:
+    image: postgres:14
+    environment:
+      POSTGRES_DB: telemetry_db
+      POSTGRES_USER: telemetry_user
+      POSTGRES_PASSWORD: telemetry_password
+    volumes:
+      - telemetry_db_data:/var/lib/postgresql/data
+      - ./db/telemetry_init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U telemetry_user -d telemetry_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5435:5432"
+
+  olap_db:
+    image: clickhouse/clickhouse-server:24.8
+    environment:
+      CLICKHOUSE_DB: olap_db
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: clickhouse_password
+    volumes:
+      - olap_db_data:/var/lib/clickhouse
+      - ./db/olap_init.sql:/docker-entrypoint-initdb.d/olap_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --user default --password clickhouse_password --query 'SELECT 1'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+
   keycloak_db:
     image: postgres:14
     environment:
@@ -45,7 +95,7 @@ services:
       - start-dev
       - --import-realm
     volumes:
-      - ./keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json
+      - ./keycloak/realm.json:/opt/keycloak/data/import/realm-export.json
     ports:
       - "8080:8080"
     depends_on:
@@ -72,12 +122,51 @@ services:
       COOKIE_SECURE: "false"
       COOKIE_SAME_SITE: lax
       PROFILE_STORE_PATH: /app/data/profiles.db
+      OLAP_CLICKHOUSE_HOST: olap_db
+      OLAP_CLICKHOUSE_PORT: "8123"
+      OLAP_CLICKHOUSE_USER: default
+      OLAP_CLICKHOUSE_PASSWORD: clickhouse_password
+      OLAP_CLICKHOUSE_DATABASE: olap_db
     volumes:
       - bionicpro_auth_data:/app/data
     ports:
       - "8000:8000"
     depends_on:
       - keycloak
+      - olap_db
+
+  airflow:
+    image: apache/airflow:2.9.1-python3.11
+    environment:
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
+      AIRFLOW__WEBSERVER__RBAC: "true"
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: admin
+      _PIP_ADDITIONAL_REQUIREMENTS: psycopg2-binary==2.9.10 clickhouse-connect==0.8.15
+      CRM_DSN: dbname=crm_db user=crm_user password=crm_password host=crm_db port=5432
+      TELEMETRY_DSN: dbname=telemetry_db user=telemetry_user password=telemetry_password host=telemetry_db port=5432
+      OLAP_CLICKHOUSE_HOST: olap_db
+      OLAP_CLICKHOUSE_PORT: "8123"
+      OLAP_CLICKHOUSE_USER: default
+      OLAP_CLICKHOUSE_PASSWORD: clickhouse_password
+      OLAP_CLICKHOUSE_DATABASE: olap_db
+      AIRFLOW_UID: "50000"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - airflow_data:/opt/airflow
+    command: standalone
+    ports:
+      - "8081:8080"
+    depends_on:
+      crm_db:
+        condition: service_healthy
+      telemetry_db:
+        condition: service_healthy
+      olap_db:
+        condition: service_healthy
 
   frontend:
     build:
@@ -92,4 +181,8 @@ services:
 
 volumes:
   bionicpro_auth_data:
+  crm_db_data:
   keycloak_db_data:
+  telemetry_db_data:
+  olap_db_data:
+  airflow_data:
