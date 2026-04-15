@@ -17,6 +17,18 @@ services:
     ports:
       - "5434:5432"
 
+  crm-db-cdc-init:
+    image: postgres:14
+    depends_on:
+      crm_db:
+        condition: service_healthy
+    volumes:
+      - ./db/crm_cdc_init.sql:/scripts/crm_cdc_init.sql:ro
+    entrypoint:
+      - /bin/sh
+      - -c
+      - PGPASSWORD=crm_password psql -h crm_db -U crm_user -d crm_db -f /scripts/crm_cdc_init.sql
+
   telemetry_db:
     image: postgres:14
     environment:
@@ -154,6 +166,9 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+      - zookeeper_log:/var/lib/zookeeper/log
 
   kafka:
     image: confluentinc/cp-kafka:7.5.1
@@ -173,12 +188,21 @@ services:
       - "9092:9092"
     volumes:
       - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "cub kafka-ready -b localhost:9092 1 20"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
 
   debezium:
     image: debezium/connect:2.3
     depends_on:
-      - kafka
-      - crm_db
+      kafka:
+        condition: service_healthy
+      crm_db:
+        condition: service_healthy
+      crm-db-cdc-init:
+        condition: service_completed_successfully
     environment:
       BOOTSTRAP_SERVERS: kafka:9092
       GROUP_ID: 1
@@ -202,7 +226,8 @@ services:
   debezium-init:
     image: curlimages/curl:latest
     depends_on:
-      - debezium
+      debezium:
+        condition: service_healthy
     volumes:
       - ./debezium/register-connectors.sh:/scripts/register-connectors.sh:ro
       - ./debezium/crm-connector.json:/debezium/crm-connector.json:ro
@@ -299,5 +324,7 @@ volumes:
   telemetry_db_data:
   olap_db_data:
   kafka_data:
+  zookeeper_data:
+  zookeeper_log:
   airflow_data:
   minio_data:

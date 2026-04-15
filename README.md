@@ -49,6 +49,13 @@ docker compose up
 10. Выберите период.
 11. Нажмите `Получить отчёт`.
 
+Скриншоты:
+1. &nbsp; <br> ![](screenshots/1.png)
+2. &nbsp; <br> ![](screenshots/2.png)
+3. &nbsp; <br> ![](screenshots/3.png)
+4. &nbsp; <br> ![](screenshots/4.png)
+5. &nbsp; <br> ![](screenshots/5.png)
+
 
 ## Задание 3. Снижение нагрузки на базу данных
 
@@ -73,4 +80,12 @@ docker compose up
 3. Откройте Debezium: http://localhost:8083/connectors
 4. Должен существовать connector `crm-connector`.
 5. Откройте UI: http://localhost:3000
-6. Нажмите `Получить отчёт`.
+
+Скриншоты:
+- Debezium status:
+    1. &nbsp; <br> ![](screenshots/6.png)
+    2. &nbsp; <br> ![](screenshots/7.png)
+    3. &nbsp; <br> ![](screenshots/8.png)
+    4. &nbsp; <br> ![](screenshots/9.png)
+- Debezium логи после изменения БД (с помощью `UPDATE crm_clients SET segment = 'standard' WHERE username = 'user1';`):
+    1. &nbsp; <br> ![](screenshots/10.png)

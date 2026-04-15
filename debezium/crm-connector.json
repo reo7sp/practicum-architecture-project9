@@ -11,6 +11,7 @@
     "database.server.name": "dbserver1",
     "slot.name": "debezium_slot",
     "publication.name": "crm_pub",
+    "publication.autocreate.mode": "disabled",
     "table.include.list": "public.crm_clients",
     "tombstones.on.delete": "false",
     "key.converter": "org.apache.kafka.connect.json.JsonConverter",
