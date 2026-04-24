@@ -1,9 +1,10 @@
-# Организационные подразделения (OU)
+# Организационные подразделения
 dn: ou=People,dc=example,dc=com
 objectClass: top
 objectClass: organizationalUnit
 ou: People
 
+# Группы
 dn: ou=Groups,dc=example,dc=com
 objectClass: top
 objectClass: organizationalUnit
@@ -13,8 +14,9 @@ ou: Groups
 dn: uid=john.doe,ou=People,dc=example,dc=com
 objectClass: top
 objectClass: inetOrgPerson
-cn: John
+cn: John Doe
 sn: Doe
+givenName: John
 uid: john.doe
 mail: john@example.com
 userPassword: password
@@ -22,28 +24,59 @@ userPassword: password
 dn: uid=jane.smith,ou=People,dc=example,dc=com
 objectClass: top
 objectClass: inetOrgPerson
-cn: Jane
+cn: Jane Smith
 sn: Smith
+givenName: Jane
 uid: jane.smith
 mail: jane@example.com
 userPassword: password
 
-dn: uid=alex,ou=People,dc=example,dc=com
+dn: uid=alex.johnson,ou=People,dc=example,dc=com
+objectClass: top
 objectClass: inetOrgPerson
-cn: Alex
+cn: Alex Johnson
 sn: Johnson
+givenName: Alex
 uid: alex.johnson
 mail: alex@example.com
 userPassword: password
 
-# Роли
+dn: uid=marie.dupont,ou=People,dc=example,dc=com
+objectClass: top
+objectClass: inetOrgPerson
+cn: Marie Dupont
+sn: Dupont
+givenName: Marie
+uid: marie.dupont
+mail: marie.dupont@example.fr
+userPassword: password
+
+dn: uid=luca.rossi,ou=People,dc=example,dc=com
+objectClass: top
+objectClass: inetOrgPerson
+cn: Luca Rossi
+sn: Rossi
+givenName: Luca
+uid: luca.rossi
+mail: luca.rossi@example.it
+userPassword: password
+
+# Роли и группы
 dn: cn=user,ou=Groups,dc=example,dc=com
 objectClass: groupOfNames
 cn: user
 member: uid=jane.smith,ou=People,dc=example,dc=com
+member: uid=marie.dupont,ou=People,dc=example,dc=com
 
 dn: cn=prothetic_user,ou=Groups,dc=example,dc=com
 objectClass: groupOfNames
 cn: prothetic_user
 member: uid=alex.johnson,ou=People,dc=example,dc=com
 member: uid=john.doe,ou=People,dc=example,dc=com
+member: uid=luca.rossi,ou=People,dc=example,dc=com
+
+dn: cn=foreign_bionicpro_user,ou=Groups,dc=example,dc=com
+objectClass: groupOfNames
+cn: foreign_bionicpro_user
+member: uid=marie.dupont,ou=People,dc=example,dc=com
+member: uid=luca.rossi,ou=People,dc=example,dc=com
